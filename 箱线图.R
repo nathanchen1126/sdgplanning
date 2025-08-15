@@ -86,7 +86,7 @@ p <- ggplot(plot_data_long, aes(x = cluster, y = Value)) +
   scale_y_continuous(guide = "prism_offset_minor") +
   scale_fill_manual(values = color_palette) + # 用于点的填充色
   scale_color_manual(values = color_palette) + # <--- 新增：用于点的轮廓色，使用相同的调色板
-  labs(x = "Cluster", y = "SDGs Similarity") +
+  labs(x = "Cluster", y = "SDGs Integration Scores") +
   mytheme
 
 # 8. 显示图像
