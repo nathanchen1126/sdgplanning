@@ -4,34 +4,56 @@ import statsmodels.api as sm
 # ==========================================
 # 1. 基础设置与数据读取
 # ==========================================
-input_file = r"D:\1sdgplanning\1data\sdg统计数据匹配.xlsx"
-output_file = r"D:\1sdgplanning\1data\regression_Stepwise_NoFixedEffects.xlsx"
+input_file = r"D:\1sdgplanning\1data\1统计数据匹配.xlsx"
+output_file = r"D:\1sdgplanning\1data\回归结果\regression_Stepwise_Mechanism_Analysis.xlsx"
 
 df = pd.read_excel(input_file, sheet_name='data')
 y_col = 'total'
 
-# 定义四个层级的变量（对应不同维度的驱动机制）
-# Spec I: 基础发展水平 (Development Levels)
-vars_spec1 = ['gdp', 'population']
+# --- 变量分组定义 (42个变量归类) ---
 
-# Spec II: 政策优先级与投入 (Policy Priority & Public Services)
-vars_spec2 = vars_spec1 + ['expenditure', 'education', 'hospital', 'library', 'property']
+# Spec I: 经济与产业基准 (Economic & Industrial Baseline)
+# 解释：最基础的资源禀赋与经济结构
+vars_spec1 = [
+    'gdp', 'population', 'pro_capital', 'big_city', 
+    'primary_industry', 'secondary_sector', 'tertiary_sectory'
+]
 
-# Spec III: 空间与地理属性 (Spatial Factors)
-vars_spec3 = vars_spec2 + ['coastal', 'yangtze_river', 'yellow_river', 'hu_line']
+# Spec II: 政策优先级与公共服务 (Policy Priority & Public Services)
+# 解释：政府的主观投入与服务水平 (回应审稿人 "Policy Priority")
+vars_spec2 = vars_spec1 + [
+    'expenditure', 'sci_expend', 'edu_expend', 'education', 
+    'hospital', 'library', 'property', 'export', 'high_way'
+]
 
-# Spec IV: 行政级别与国家战略 (Administrative & Strategic Factors)
-vars_spec4 = vars_spec3 + ['pro_capital', 'big_city', 'eco']
+# Spec III: 自然地理与空间约束 (Physical Geography & Spatial Constraints)
+# 解释：不可改变的自然地理特征 (回应审稿人 "How spatial certain SDGs are")
+vars_spec3 = vars_spec2 + [
+    'elevation_mean', 'elevation_sd', 'slope_mean', 'slope_sd', 'rain',
+    'coastal', 'yangtze_river', 'yellow_river', 'hu_line', 'eco',
+    'buildup', 'water', 'greening'
+]
 
-# 提取核心数据，清理缺失值
-all_vars = vars_spec4
-df_clean = df.dropna(subset=[y_col] + all_vars).copy()
+# Spec IV: 国家战略试点 (Strategic Policy Pilots)
+# 解释：更高级别的制度性干扰
+vars_spec4 = vars_spec3 + [
+    'pilot_eco', 'pilot_fdi', 'pilot_ecosupervison', 'pilot_inno', 
+    'pilot_urban', 'pilot_resilience', 'pilot_15min'
+]
 
-# 提取因变量
+# 汇总所有涉及的自变量用于表格排序（包括那些没在Spec里但你在列表里的极值变量）
+# 这里补充上 elevation_min 等剩余变量，确保表格行完整
+all_potential_vars = vars_spec4 + [
+    'elevation_min', 'elevation_max', 'elevation_range', 
+    'slope_min', 'slope_max', 'slope_range'
+]
+
+# 清理缺失值
+df_clean = df.dropna(subset=[y_col] + vars_spec4).copy()
 y = df_clean[y_col]
 
 # ==========================================
-# 2. 辅助函数：格式化输出
+# 2. 辅助函数
 # ==========================================
 def get_significance_stars(p_value):
     if p_value < 0.001: return '***'
@@ -39,51 +61,44 @@ def get_significance_stars(p_value):
     elif p_value < 0.05: return '*'
     else: return ''
 
-def run_spec_model(x_vars, model_name):
-    """运行带有稳健标准误的OLS模型(不含固定效应)，并格式化输出"""
-    # 提取自变量并加入常数项
-    X = df_clean[x_vars]
-    X = sm.add_constant(X)
-    
-    # 拟合 OLS 模型 (使用 HC3 稳健标准误处理异方差)
+def run_spec_model(x_vars):
+    X = sm.add_constant(df_clean[x_vars])
+    # 稳健标准误回归
     model = sm.OLS(y, X).fit(cov_type='HC3')
     
-    # 提取结果
     res = {}
-    for var in ['const'] + all_vars:
+    for var in ['const'] + all_potential_vars:
         if var in model.params:
             coef = model.params[var]
             pval = model.pvalues[var]
             res[var] = f"{coef:.4f}{get_significance_stars(pval)}"
         else:
-            res[var] = "" # 如果该模型没用到这个变量，留空
+            res[var] = ""
             
-    # 补充模型统计量
     res['Observations'] = str(int(model.nobs))
     res['R-squared'] = f"{model.rsquared:.4f}"
     res['Adj. R-squared'] = f"{model.rsquared_adj:.4f}"
-    
     return res
 
 # ==========================================
-# 3. 运行四个逐步递进模型
+# 3. 执行回归
 # ==========================================
-results_dict = {}
-results_dict['Spec I (基础发展)'] = run_spec_model(vars_spec1, 'Spec I')
-results_dict['Spec II (+政策投入)'] = run_spec_model(vars_spec2, 'Spec II')
-results_dict['Spec III (+空间地理)'] = run_spec_model(vars_spec3, 'Spec III')
-results_dict['Spec IV (+行政战略)'] = run_spec_model(vars_spec4, 'Spec IV')
+results_dict = {
+    'Spec I (经济基准)': run_spec_model(vars_spec1),
+    'Spec II (+政策投入)': run_spec_model(vars_spec2),
+    'Spec III (+空间地理)': run_spec_model(vars_spec3),
+    'Spec IV (+战略试点)': run_spec_model(vars_spec4)
+}
 
 # ==========================================
-# 4. 整理表格并导出
+# 4. 导出
 # ==========================================
 results_df = pd.DataFrame(results_dict)
 
-# 强制规范行的排序顺序，让表格符合学术阅读习惯
-row_order = ['const'] + all_vars + ['Observations', 'R-squared', 'Adj. R-squared']
+# 定义表格行顺序
+row_order = ['const'] + all_potential_vars + ['Observations', 'R-squared', 'Adj. R-squared']
 results_df = results_df.reindex(row_order)
 
-# 导出至Excel
 results_df.to_excel(output_file, index_label='Variables')
 
-print(f"不包含省份固定效应的逐步回归机制分析已完成！\n结果表格已保存至：\n{output_file}")
+print(f"阶梯式回归分析已完成！请查看：\n{output_file}")
