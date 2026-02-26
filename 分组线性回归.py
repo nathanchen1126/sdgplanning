@@ -79,7 +79,7 @@ results_dict['Spec IV (+行政战略)'] = run_spec_model(vars_spec4, 'Spec IV')
 # ==========================================
 results_df = pd.DataFrame(results_dict)
 
-# 强制规范行的排序顺序，让表格符合学术阅读习惯
+# 强制规范行的排序顺序，让表格符合学术阅读习惯s
 row_order = ['const'] + all_vars + ['Observations', 'R-squared', 'Adj. R-squared']
 results_df = results_df.reindex(row_order)
 
