@@ -62,8 +62,8 @@ def generate_wordcloud_from_dict(frequencies, font_path, output_filename):
         include_numbers=False,
         normalize_plurals=False,
         max_words=200,
-        max_font_size=38,
-        min_font_size=25,
+        max_font_size=60,
+        min_font_size=20,
         margin=0                # 去除词语间默认空隙
     ).generate_from_frequencies(frequencies)
 
@@ -89,7 +89,7 @@ def generate_wordcloud_from_dict(frequencies, font_path, output_filename):
 #-------------------------------------------------------------------------------#
 generate_wordcloud_from_dict(
     keywords_freq,
-    font_path="C:/Windows/Fonts/arial.ttf",
+    font_path="C:/Windows/Fonts/Arial.ttf",
     output_filename="keywords_wordcloud_nature.png"
 )
 
