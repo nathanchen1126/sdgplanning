@@ -3,8 +3,8 @@ import os
 
 def merge_excel_data():
     # 1. 定义输入文件路径
-    file1_path = r"D:\1sdgplanning\3result\similarity.xls"
-    file2_path = r"D:\1sdgplanning\3result\similarity_result_province.xlsx"
+    file1_path = r"D:\1sdgplanning\1data\1sdg省市匹配.xlsx"
+    file2_path = r"D:\1sdgplanning\3result\返修结果\similarity_result_province_quanwen8192.xlsx"
     
     # --- 修改的部分：定义新的输出路径 ---
     output_dir = r"D:\1sdgplanning\1data"
