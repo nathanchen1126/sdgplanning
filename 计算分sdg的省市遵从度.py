@@ -1,3 +1,4 @@
+#从SDG1到SDG17，计算全国所有地级市的平均遵从度指标，并按照绝对误差（MAE）升序排列，输出到Excel文件中，按照SDG分类。
 import pandas as pd
 import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
