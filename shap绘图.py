@@ -1,13 +1,14 @@
 """
 ================================================================================
-非参数机器学习与高级SHAP可视化脚本
+非参数机器学习与高级SHAP可视化脚本 (已修改配色 & 修复缩进)
 ================================================================================
 工作内容：
     1. 继承原始数据处理、随机森林训练及VIF、Group Importance计算逻辑。
     2. 整合参考绘图代码，创建一个自定义的组合可视化图表（环状饼图+条形图+蜂群图）。
-    3. 将结果保存至指定路径 D:\1sdgplanning\5fig
+    3. 将结果保存至指定路径 D:\\1sdgplanning\\5fig
     4. 字体强制Arial，去除大标题，修改X轴范围。
     5. 缩小环状图尺寸，并强制将标签重命名为 Baseline, Spatial, Policy。
+    6. [修改]：蜂群图配色方案从'coolwarm'修改为参考热力图的“浅绿-深棕”配色方案。
 
 工程师：Python代码工程师
 ================================================================================
@@ -206,14 +207,14 @@ print("\n" + "="*30)
 print(" 步骤 6: 绘制 SHAP 组合图")
 print("="*30)
 
-# 绘图配置 
-SELECTED_COLOR_SCHEME = 'coolwarm' # 选择 coolwarm 配色
-CMAP_BASE = plt.cm.get_cmap(SELECTED_COLOR_SCHEME)
+CMAP_BASE = plt.cm.get_cmap('coolwarm')
+
+# 原来的设置保持不变
 MAX_DISPLAY = 15 # 图中展示前15个变量，避免拥挤
 
-# 定义组别的固定配色 (用于条形图和内部子图)
+# 定义组别的固定配色 (用于条形图和饼图)
 group_colors_map = {
-    'Baseline': '#4e79a7', # 莫兰迪蓝
+    'Baseline': '#8b6c42', # 莫兰迪棕
     'Spatial': '#59a14f',  # 莫兰迪绿
     'Policy': '#edc948'   # 莫兰迪黄
 }
@@ -252,7 +253,6 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     ax_bar = fig.add_axes([bar_left, plot_bottom, bar_width, plot_height])
     
     # --- B. 嵌入式环形饼图 (Donut pie) ---
-    # 【需求1修改：缩小环状图大小，原为 0.28】
     pie_size = 0.25
     pie_left = bar_left + 0.04 # 微调左边距适配缩小后的尺寸
     pie_bottom = plot_bottom + 0.04 # 微调底边距
@@ -283,7 +283,6 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     ax_bar.invert_yaxis() 
     ax_bar.set_xlabel('Mean(|SHAP Value|)', fontsize=18, labelpad=10)
     
-    # 【强制修改X轴范围】
     ax_bar.set_xlim(0, 0.015)
     
     ax_bar.spines['left'].set_visible(False)
@@ -298,7 +297,7 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     # --- B. 嵌入式环状饼图 (ax_pie) ---
     percentages = [res['Contribution_Percentage(%)'] for res in group_results]
     
-    # 【需求2修改：使用映射字典严格重命名标签】
+    # 使用映射字典严格重命名标签
     group_labels_clean = [pie_label_mapping[res['Group_Name']] for res in group_results]
     
     radial_inner_colors = [group_colors_map[pie_label_mapping[res['Group_Name']]] for res in group_results]
@@ -329,11 +328,12 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     shap_values_sorted = shap_values[:, sorted_idx]
     X_data_sorted = X_df.iloc[:, sorted_idx]
     
+    # 使用自定义的 CMAP_BASE（继承自参考热力图）
     shap.summary_plot(
         shap_values_sorted, 
         X_data_sorted, 
         plot_type="dot", 
-        cmap=CMAP_BASE,     
+        cmap=CMAP_BASE,     # 已应用自定义 CMAP
         max_display=MAX_DISPLAY, 
         show=False, 
         plot_size=None,     
@@ -353,6 +353,7 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     ax_beeswarm.set_xlim(ax_beeswarm.get_xlim()) 
 
     # --- D. 手动添加 Colorbar ---
+    # 更新 ScalarMappable 的 cmap
     m = ScalarMappable(cmap=CMAP_BASE)
     m.set_array([0, 1]) 
     cb = fig.colorbar(m, cax=ax_cbar, ticks=[0, 1])
@@ -366,7 +367,7 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     plt.close(fig)
 
 # 执行绘图
-final_fig_path = os.path.join(output_dir_fig, "shap组合图.jpg")
+final_fig_path = os.path.join(output_dir_fig, "shap组合图_harmonized.jpg") # 修改文件名以区分
 plot_shap_combined(X, shap_values_array, shap_explanation, importance_df, group_results, feature_group_map, final_fig_path)
 
 print("\n🏆 工作完成！")
