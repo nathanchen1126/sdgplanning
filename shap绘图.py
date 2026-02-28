@@ -1,6 +1,6 @@
 """
 ================================================================================
-非参数机器学习与高级SHAP可视化脚本 (已修改配色 & 修复缩进)
+非参数机器学习与高级SHAP可视化脚本 (已修改配色 & 修复缩进 & 简写标签)
 ================================================================================
 工作内容：
     1. 继承原始数据处理、随机森林训练及VIF、Group Importance计算逻辑。
@@ -9,6 +9,7 @@
     4. 字体强制Arial，去除大标题，修改X轴范围。
     5. 缩小环状图尺寸，并强制将标签重命名为 Baseline, Spatial, Policy。
     6. [修改]：蜂群图配色方案从'coolwarm'修改为参考热力图的“浅绿-深棕”配色方案。
+    7. [新增]：在柱状图中应用2~4个大写字母的简写以提高图表美观度与专业性。
 
 工程师：Python代码工程师
 ================================================================================
@@ -226,6 +227,33 @@ pie_label_mapping = {
     '3_Policy & Intervention': 'Policy'
 }
 
+# 变量简写映射字典 (用于条形图标签，兼容对数化前缀)
+name_mapping = {
+    'population': 'POP', 'ln_population': 'POP',
+    'gdp': 'GDP', 'ln_gdp': 'GDP',
+    'buildup': 'BUA', 'ln_buildup': 'BUA',
+    'high_way': 'HWY', 'ln_high_way': 'HWY',
+    'water': 'WAT', 'ln_water': 'WAT',
+    'elevation_mean': 'ELE',
+    'slope_mean': 'SLP',
+    'rain': 'PRE',
+    'yangtze_river': 'YTR',
+    'yellow_river': 'YLR',
+    'coastal': 'CST',
+    'hu_line': 'HUL',
+    'sci_expend': 'SCI', 'ln_sci_expend': 'SCI',
+    'edu_expend': 'EDU', 'ln_edu_expend': 'EDU',
+    'pro_capital': 'CAP',
+    'big_city': 'BGC',
+    'pilot_eco': 'PECO',
+    'pilot_fdi': 'PFDI',
+    'pilot_ecosupervison': 'PES',
+    'pilot_inno': 'PINN',
+    'pilot_urban': 'PURB',
+    'pilot_resilience': 'PRES',
+    'pilot_15min': 'P15M'
+}
+
 def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_results, feature_group_map, save_path):
     """
     创建一个复杂的自定义组合图：左侧嵌入环状饼图的条形图，右侧对齐的蜂群图。
@@ -279,7 +307,10 @@ def plot_shap_combined(X_df, shap_values, explanation, importance_df, group_resu
     ax_bar.barh(y_pos, top_df['Importance'], color=bar_colors, height=0.5, edgecolor='none', alpha=0.9)
     
     ax_bar.set_yticks(y_pos)
-    ax_bar.set_yticklabels(sorted_features, fontsize=16)
+    # 【修改处】：将排序后的特征名通过字典映射为大写简写
+    abbreviated_features = [name_mapping.get(f, f) for f in sorted_features]
+    ax_bar.set_yticklabels(abbreviated_features, fontsize=16)
+    
     ax_bar.invert_yaxis() 
     ax_bar.set_xlabel('Mean(|SHAP Value|)', fontsize=18, labelpad=10)
     
