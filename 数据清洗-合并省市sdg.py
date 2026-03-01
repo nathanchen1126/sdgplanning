@@ -4,7 +4,7 @@ import os
 def merge_excel_data():
     # 1. 定义输入文件路径
     file1_path = r"D:\1sdgplanning\1data\1sdg省市匹配.xlsx"
-    file2_path = r"D:\1sdgplanning\3result\返修结果\similarity_result_province_quanwen8192.xlsx"
+    file2_path = r"D:\1sdgplanning\1data\省级相似度.xlsx"
     
     # --- 修改的部分：定义新的输出路径 ---
     output_dir = r"D:\1sdgplanning\1data"
@@ -29,7 +29,8 @@ def merge_excel_data():
         '省', 'total_pro', 'sdg1_pro', 'sdg2_pro', 'sdg3_pro', 'sdg4_pro', 
         'sdg5_pro', 'sdg6_pro', 'sdg7_pro', 'sdg8_pro', 'sdg9_pro', 
         'sdg10_pro', 'sdg11_pro', 'sdg12_pro', 'sdg13_pro', 'sdg14_pro', 
-        'sdg15_pro', 'sdg16_pro', 'sdg17_pro'
+        'sdg15_pro', 'sdg16_pro', 'sdg17_pro', 'region_pro', 'yz', 'gdp_pro', 'pop_pro', 'exp_pro', 'bua_pro'
+
     ]
 
     # 检查表2中是否包含所有需要的列

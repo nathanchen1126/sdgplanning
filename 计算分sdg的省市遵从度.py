@@ -1,102 +1,85 @@
-#从SDG1到SDG17，计算全国所有地级市的平均遵从度指标，并按照绝对误差（MAE）升序排列，输出到Excel文件中，按照SDG分类。
 import pandas as pd
 import numpy as np
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from scipy.stats import pearsonr
-import os
-import warnings
+import statsmodels.formula.api as smf
+import scipy.stats as stats
 
-warnings.filterwarnings('ignore')
+# =================================================================
+# 1. 加载数据 (遵循您的本地路径)
+# =================================================================
+input_path = r'D:\1sdgplanning\1data\1sdg省市匹配.xlsx'
+df = pd.read_excel(input_path)
 
-def calculate_sdg_level_compliance():
-    # 1. 设置输入输出路径
-    input_file = r"D:\1sdgplanning\1data\1sdg省市匹配.xlsx"
-    output_dir = r"D:\1sdgplanning\1data"
-    output_file = os.path.join(output_dir, "各SDG目标_省级遵从度计算结果.xlsx")
-    
-    print("正在读取省市匹配数据，请稍候...")
-    try:
-        df = pd.read_excel(input_file)
-    except Exception as e:
-        print(f"读取文件失败，请检查路径: {e}")
-        return
-        
-    results = []
-    
-    print("正在逐个计算 SDG1 到 SDG17 在全国所有地级市的平均遵从度指标...")
-    
-    # 2. 循环遍历 17 个 SDG 目标
-    for i in range(1, 18):
-        sdg_name = f'SDG{i}'
-        city_col = f'sdg{i}'
-        pro_col = f'sdg{i}_pro'
-        
-        if city_col not in df.columns or pro_col not in df.columns:
-            print(f"警告：找不到列 {city_col} 或 {pro_col}，已跳过。")
-            continue
-            
-        # 提取当前维度的市级和省级数据，并剔除缺失值 (NaN)
-        valid_data = df[[city_col, pro_col]].dropna()
-        y_city = valid_data[city_col].values
-        y_pro = valid_data[pro_col].values
-        n_valid = len(valid_data)
-        
-        if n_valid > 1:
-            # 测度 1：绝对偏离度 (MAE 与 RMSE)
-            # MAE 越大，说明在这个目标上，地市级与省级文本得分的绝对差异越大（地方裁量权大）
-            rmse = np.sqrt(mean_squared_error(y_pro, y_city))
-            mae = mean_absolute_error(y_pro, y_city)
-            
-            # 测度 2：市级得分在全样本的方差 (Variance)
-            # 方差越大，说明各地级市在这个目标上的做法五花八门，分化严重
-            city_variance = np.var(y_city)
-            
-            # 测度 3：绝对拟合优度 (Sklearn R2)
-            try:
-                sklearn_r2 = r2_score(y_true=y_pro, y_pred=y_city)
-            except:
-                sklearn_r2 = np.nan
-                
-            # 测度 4：趋势一致性 (Pearson r 及 Pearson R2)
-            try:
-                if np.std(y_city) == 0 or np.std(y_pro) == 0:
-                    r = np.nan
-                else:
-                    r, p_value = pearsonr(y_city, y_pro)
-                pearson_r2 = r ** 2 if not np.isnan(r) else np.nan
-            except:
-                r = np.nan
-                pearson_r2 = np.nan
-                
-        else:
-            rmse, mae, city_variance, sklearn_r2, r, pearson_r2 = np.nan, np.nan, np.nan, np.nan, np.nan, np.nan
-            
-        # 记录当前 SDG 维度的计算结果
-        results.append({
-            'SDG_Goal': sdg_name,
-            'Valid_Cities_Count': n_valid,
-            'City_Level_Variance (方差)': city_variance,
-            'Absolute_Compliance_R2 (Sklearn)': sklearn_r2,
-            'Trend_Compliance_R2 (Pearson_R2)': pearson_r2,
-            'Trend_Correlation_r': r,
-            'Absolute_Error_RMSE': rmse,
-            'Absolute_Error_MAE': mae
-        })
-        
-    # 3. 转换为 DataFrame
-    res_df = pd.DataFrame(results)
-    
-    # 按照 MAE (绝对误差) 升序排列
-    # 排在前面的：误差小，属于强约束、死命令的 SDG
-    # 排在后面的：误差大，属于地方自由发挥的 SDG
-    res_df = res_df.sort_values(by='Absolute_Error_MAE', ascending=True)
-    
-    res_df.to_excel(output_file, index=False)
-    
-    print("\n" + "=" * 55)
-    print("✅ 计算已全部完成！")
-    print(f"📁 结果已成功保存至:\n   {output_file}")
-    print("=" * 55)
+# 将“省”重命名为 Province 以便公式解析
+df.rename(columns={'省': 'Province'}, inplace=True)
 
-if __name__ == "__main__":
-    calculate_sdg_level_compliance()
+# =================================================================
+# 2. 定义计算函数 (增加显著性 LRT 检验)
+# =================================================================
+def calculate_with_significance(data, target_col, group_col):
+    """
+    计算 ICC1, ICC2 并通过似然比检验 (LRT) 计算随机效应显著性
+    """
+    # a. 构建混合线性模型 (包含省级随机截距)
+    # 使用 reml=False (MLE) 以便进行 LRT 比较
+    mixed_model = smf.mixedlm(f"{target_col} ~ 1", data, groups=data[group_col])
+    mixed_result = mixed_model.fit(reml=False)
+    
+    # b. 构建普通线性模型 (Null OLS 模型，不含随机效应)
+    ols_model = smf.ols(f"{target_col} ~ 1", data)
+    ols_result = ols_model.fit()
+    
+    # c. 提取方差分量 [cite: 2213]
+    tau_00 = mixed_result.cov_re.iloc[0, 0]  # 组间方差
+    sigma_sq = mixed_result.scale            # 组内方差
+    
+    # d. 计算 ICC 指标 [cite: 2013]
+    icc1 = tau_00 / (tau_00 + sigma_sq) if (tau_00 + sigma_sq) > 0 else 0
+    n_j = data.groupby(group_col).size().mean()
+    icc2 = (n_j * tau_00) / (n_j * tau_00 + sigma_sq) if (n_j * tau_00 + sigma_sq) > 0 else 0
+    
+    # e. 似然比检验 (LRT) 计算 p 值
+    # 检验随机方差分量是否显著大于 0
+    lrt_stat = 2 * (mixed_result.llf - ols_result.llf)
+    # 使用混合卡方分布检验 (50% point mass at 0 + 50% chi2(1))
+    p_val = 0.5 * (1 - stats.chi2.cdf(lrt_stat, 1)) if lrt_stat > 0 else 1.0
+    
+    return {
+        'Between_group_Var_tau00': tau_00,
+        'Within_group_Var_sigma2': sigma_sq,
+        'ICC1': icc1,
+        'ICC2': icc2,
+        'LRT_p_value': p_val
+    }
+
+# =================================================================
+# 3. 批量运行 17 个 SDG 指标
+# =================================================================
+final_results = []
+
+for i in range(1, 18):
+    sdg_col = f'sdg{i}'
+    if sdg_col in df.columns:
+        print(f"正在分析 {sdg_col}...")
+        try:
+            metrics = calculate_with_significance(df, sdg_col, 'Province')
+            metrics['SDG_Indicator'] = f'SDG{i}'
+            final_results.append(metrics)
+        except Exception as e:
+            print(f"⚠️ {sdg_col} 计算异常: {e}")
+
+# =================================================================
+# 4. 结果整理与导出
+# =================================================================
+res_df = pd.DataFrame(final_results)
+# 按 ICC1 排序，呈现从“强省级统筹”到“强地方自主”的梯度 [cite: 2213]
+res_df = res_df[['SDG_Indicator', 'Between_group_Var_tau00', 
+                 'Within_group_Var_sigma2', 'ICC1', 'ICC2', 'LRT_p_value']]
+res_df = res_df.sort_values(by='ICC1', ascending=False)
+
+output_path = r'D:\1sdgplanning\1data\SDG_HLM_Full_Analysis.csv'
+res_df.to_csv(output_path, index=False, encoding='utf-8-sig')
+
+print("\n" + "="*50)
+print(f"✅ HLM 显著性分析完成！")
+print("="*50)
+print(res_df.to_string(index=False))
