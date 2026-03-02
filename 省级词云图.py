@@ -10,7 +10,7 @@ from wordcloud import WordCloud
 #-------------------------------------------------------------------------------#
                         # Load Excel and Setup Paths #
 #-------------------------------------------------------------------------------#
-file_path = r"D:\1sdgplanning\1data\词云.xlsx"
+file_path = r"D:\1sdgplanning\1data\词云_市top10.xlsx"
 output_dir = r"D:\1sdgplanning\5fig\出图"
 os.makedirs(output_dir, exist_ok=True)
 
@@ -68,7 +68,10 @@ def generate_wordcloud_from_dict(frequencies, font_path, output_filename):
     ).generate_from_frequencies(frequencies)
 
     plt.figure(figsize=(width_in, height_in))
-    plt.imshow(wc, interpolation='bilinear')
+
+    # ✅ 关键修复：不要 plt.imshow(wc)，避免触发 wc.__array__ -> numpy copy 参数报错
+    plt.imshow(wc.to_image(), interpolation='bilinear')
+
     plt.axis('off')
     plt.tight_layout(pad=0)
 
@@ -90,11 +93,11 @@ def generate_wordcloud_from_dict(frequencies, font_path, output_filename):
 generate_wordcloud_from_dict(
     keywords_freq,
     font_path="C:/Windows/Fonts/Arial.ttf",
-    output_filename="keywords_wordcloud_nature_pro.png"
+    output_filename="keywords_wordcloud_nature_市top10.png"
 )
 
 generate_wordcloud_from_dict(
     chinese_freq,
     font_path="C:/Windows/Fonts/simhei.ttf",
-    output_filename="chinese_wordcloud_nature_pro.png"
+    output_filename="chinese_wordcloud_nature_市top10.png"
 )
